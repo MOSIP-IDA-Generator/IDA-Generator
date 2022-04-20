@@ -66,6 +66,8 @@ import io.mosip.test.packetcreator.mosippacketcreator.dto.PersonaRequestType;
 import io.mosip.test.packetcreator.mosippacketcreator.dto.UpdatePersonaDto;
 import variables.VariableManager;
 
+// New added modules
+import java.io.IOException;
 
 @Service
 public class PacketSyncService {
@@ -154,7 +156,7 @@ public class PacketSyncService {
     	}
     }
 
-  //this will generate the requested number of resident data
+    //this will generate the requested number of resident data
     // Save the data in configured path as JSON
     // return list of resident Ids
     public String generateResidentData(int count,PersonaRequestDto residentRequestDto, String contextKey) {
@@ -261,7 +263,7 @@ public class PacketSyncService {
     			//"{\"status\":\"SUCCESS\"}";
     }
 
-	public String generateIdentityData(String residentFilePath, String contextKey) {
+	public String generateIdentityData(String residentFilePath, String contextKey) throws IOException {
 		loadServerContextProperties(contextKey);
 		VariableManager.setVariableValue("process", "NEW");
 

@@ -342,7 +342,7 @@ public class CreatePersona {
 
 						if (schemaItem.getId().toLowerCase().equals(id.toLowerCase())) {
 							//String locLevel = (String) locationSet.toArray()[j];
-							String locLevel = getLocatonLevel(j+1,locations);
+							String locLevel = getLocationLevel(j+1,locations);
 							
 							constructNode(identity, schemaItem.getId(), resident.getPrimaryLanguage(),
 									resident.getSecondaryLanguage(), locations.get(locLevel).getCode(),
@@ -409,7 +409,7 @@ public class CreatePersona {
 		
 	}
 	
-	private static String getLocatonLevel(int levelCode,Hashtable<String, MosipLocationModel> locations) {
+	private static String getLocationLevel(int levelCode,Hashtable<String, MosipLocationModel> locations) {
 		Enumeration<String> e = locations.keys();
 		while (e.hasMoreElements()) {
 			String key = e.nextElement();

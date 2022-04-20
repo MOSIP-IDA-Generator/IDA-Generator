@@ -74,8 +74,8 @@ public class PersonaController {
 	             logger.error("updatePersonaData", ex);
 	    	}
 	    	return "{Failed}";
-	    	
 	}
+
 	@ApiOperation(value = "Create persona record as per the given specification", response = String.class)
 	@PostMapping(value = "/persona/{count}")
 	public @ResponseBody String generateResidentData(@RequestBody PersonaRequestDto residentRequestDto,
@@ -109,7 +109,6 @@ public class PersonaController {
 	@ApiOperation(value = "Create test persona identity as per the given specification", response = String.class)
 	@GetMapping(value = "/persona/generateIdentityData")
 	public @ResponseBody String generateIdentityData(
-			@RequestBody PersonaRequestDto residentRequestDto,
 			@RequestParam(name="contextKey",required = false) String contextKey
 	) {
 		try{
