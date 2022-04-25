@@ -25,6 +25,8 @@ import org.mosip.dataprovider.models.MosipGenderModel;
 import org.mosip.dataprovider.models.MosipIDSchema;
 import org.mosip.dataprovider.models.MosipLocationModel;
 import org.mosip.dataprovider.models.ResidentModel;
+import org.mosip.dataprovider.models.MosipDocument;
+import org.mosip.dataprovider.models.BiometricDataModel;
 import org.mosip.dataprovider.models.SchemaValidator;
 import org.mosip.dataprovider.preparation.MosipMasterData;
 import org.mosip.dataprovider.util.CommonUtil;
@@ -95,6 +97,8 @@ public class CreatePersonaIDA {
         List<String> missingAttributes = resident.getMissAttributes();
 
         for (MosipIDSchema schemaItem : schemaList) {
+//            System.out.println(schemaItem.getId());
+
             // Add log statement for current schemaItem
             if (cb != null)
                 cb.logDebug(schemaItem.toJSONString());
@@ -135,8 +139,8 @@ public class CreatePersonaIDA {
 
             // Almost all Dynamic Fields will be handled by the processDynamicFields and added to the
             // identity JSON appropriately, so we can skip them over here
-            if (PacketTemplateProvider.processDynamicFields(schemaItem, identity, resident))
-                continue;
+//            if (PacketTemplateProvider.processDynamicFields(schemaItem, identity, resident))
+//                continue;
 
             // Adding residentStatus to the identity JSON
             if (schemaItem.getFieldType().equals("dynamic") && schemaItem.getId().toLowerCase().contains("residen")) {
@@ -259,7 +263,6 @@ public class CreatePersonaIDA {
                 if (resident.getGender().equals("Male"))
                     primaryValue = "Male";
 
-                // Why is secValue set to primaryValue as it is?
                 String secValue = primaryValue;
 
                 CreatePersona.constructNode(
@@ -277,7 +280,9 @@ public class CreatePersonaIDA {
 
             // Adding address to identity JSON
             else if (schemaItem.getId().toLowerCase().contains("address")) {
-                Pair<String, String> addrLines = PacketTemplateProvider.processAddresslines(schemaItem, resident, identity);
+                Pair<String, String> addrLines = PacketTemplateProvider.processAddresslines(
+                  schemaItem, resident, identity
+                );
 
                 CreatePersona.constructNode(
                     identity,
@@ -336,25 +341,26 @@ public class CreatePersonaIDA {
                 String id = resident.getId();
 
                 CreatePersona.constructNode(
-                    identity,
-                    schemaItem.getId(),
-                    resident.getPrimaryLanguage(),
-                    resident.getSecondaryLanguage(),
-                    id,
-                    id,
-                    schemaItem.getType().equals("simpleType") ? true : false
+                  identity,
+                  schemaItem.getId(),
+                  resident.getPrimaryLanguage(),
+                  resident.getSecondaryLanguage(),
+                  id,
+                  id,
+                  schemaItem.getType().equals("simpleType") ? true : false
                 );
 
                 continue;
             }
 
+            // Adding Location Hierarchy related parameters to identity JSON which include,
+            // placeOfBirth, listCountry, region, province, city, postalCode, zone,
             else {
                 for (int i = 0; i < locationhierarchyArray.length(); i++) {
                     JSONArray jsonArray = locationhierarchyArray.getJSONArray(i);
 
                     for (int j = 0; j < jsonArray.length(); j++) {
                         String id = jsonArray.getString(j);
-                        System.out.println(id);
 
                         if (schemaItem.getId().toLowerCase().equals(id.toLowerCase())) {
                             //String locLevel = (String) locationSet.toArray()[j];
@@ -378,55 +384,105 @@ public class CreatePersonaIDA {
             }
         }
 
-//
-//
-//            /*
-//             * for(String locLevel: locationSet) {
-//             *
-//             * if(schemaItem.getSubType().toLowerCase().contains(locLevel.toLowerCase())) {
-//             *
-//             * constructNode(identity, schemaItem.getId(), resident.getPrimaryLanguage(),
-//             * resident.getSecondaryLanguage(), locations.get(locLevel).getCode(),
-//             * locations.get(locLevel).getCode(), schemaItem.getType().equals("simpleType")
-//             * ? true: false ); found = true; break; } }
-//             */
-//            if (found)
-//                continue;
-//
-//            String someVal = null;
-//            List<SchemaValidator> validators = schemaItem.getValidators();
-//            if (validators != null) {
-//                for (SchemaValidator v : validators) {
-//                    if (v.getType().equalsIgnoreCase("regex")) {
-//                        String regexpr = v.getValidator();
-//                        if (regexpr != null && !regexpr.equals(""))
-//                            try {
-//                                someVal = CommonUtil.genStringAsperRegex(regexpr);
-//                            } catch (Exception e) {
-//                                // TODO Auto-generated catch block
-//                                e.printStackTrace();
-//                            }
-//                    }
-//                }
-//            }
-//            if (someVal == null)
-//                someVal = CommonUtil.generateRandomString(schemaItem.getMaximum());
-//            /*
-//             * if(schemaItem.getId().equals("IDSchemaVersion")) someVal =
-//             * Double.toString(schemaversion);
-//             */
-//            CreatePersona.constructNode(identity, schemaItem.getId(), resident.getPrimaryLanguage(),
-//                    resident.getSecondaryLanguage(),
-//                    someVal,
-//                    someVal,
-//                    schemaItem.getType().equals("simpleType") ? true : false
-//            );
-//
-//        }
-//        //}
-//
-//
-        return identity;
+        // If resident has no UIN, then set UIN to null in identity JSON
+        // Otherwise place the actual UIN in identity
+        String UIN = "null";
+        if (resident.getUIN() != null)
+            UIN = resident.getUIN();
+        identity.put("UIN", UIN);
+
+        BiometricDataModel biometric = resident.getBiometric();
+//        System.out.println(biometric.toString());
+
+        // Adding the introducer parameters to identity JSON
+        // These are only valid if resident has a guardian, i.e. resident is a minor
+
+        // introducerUIN = "null", if there's no introducer or no introducer UIN
+        String introducerUIN = "null";
+        if (resident.getGuardian() != null && resident.getGuardian().getUIN() != null)
+            introducerUIN = resident.getGuardian().getUIN();
+        identity.put("introducerUIN", introducerUIN);
+
+        // Same as introducerUIN
+        String introducerRID = "null";
+        if (resident.getGuardian() != null && resident.getGuardian().getRID() != null)
+            introducerRID = resident.getGuardian().getRID();
+        identity.put("introducerRID", introducerRID);
+
+        // Guardian's name, i.e. introducerName should be filled in the simpleType fashion that was followed in
+        // the schemaItem for loop and that's why we use the constructNode() method here along with the same logic
+        // that we used for fullname parameter in the for loop
+        if (resident.getGuardian() != null && resident.getGuardian().getName() != null) {
+            ResidentModel guardian = resident.getGuardian();
+            String name = guardian.getName().getFirstName();
+
+            if (guardian.getName().getMidName() != null && !guardian.getName().getMidName().equals(""))
+                name += " " + guardian.getName().getMidName();
+
+            name += " " + guardian.getName().getSurName();
+            name = name.trim();
+
+            String name_sec = "";
+            if (guardian.getSecondaryLanguage() != null) {
+                name_sec = guardian.getName_seclang().getFirstName();
+
+                if (
+                  guardian.getName_seclang().getMidName() != null &&
+                  !guardian.getName_seclang().getMidName().equals("")
+                )
+                    name_sec += " " + guardian.getName_seclang().getMidName();
+
+                name_sec += " " + guardian.getName_seclang().getSurName();
+                name_sec = name_sec.trim();
+            }
+
+            CreatePersona.constructNode(
+              identity,
+              "introducerName",
+              resident.getPrimaryLanguage(),
+              resident.getSecondaryLanguage(),
+              name,
+              name_sec,
+              true
+            );
+        }
+        else
+            identity.put("introducerName", "null");
+
+        // Creating final output JSON "response" as per required format
+        JSONObject response = new JSONObject();
+        response.put("id", "{{id}}");
+
+        JSONObject request = new JSONObject();
+        request.put("registrationId", "{{registrationId}}");
+        request.put("biometricReferenceId", "{{biometricReferenceId}}");
+        request.put("identity", identity);
+
+        // Attaching the documents list to request JSON
+        List<JSONObject> documentList = new ArrayList<>();
+        JSONObject curDocumentJSON = new JSONObject();
+
+        // Iterate through each document stored in the resident
+        for (int i=0; i<resident.getDocuments().size(); i++) {
+            MosipDocument curDocument = resident.getDocuments().get(i);
+
+            // Attach the docCategoryName parameter as category and docs parameter as value in a JSONObject
+            curDocumentJSON.put("category", curDocument.getDocCategoryName());
+            curDocumentJSON.put("value", curDocument.getDocs());
+
+            // And attach the JSONObject to this list
+            documentList.add(curDocumentJSON);
+        }
+
+        // The documentsList is then finally added to request JSON under the documents field
+        request.put("documents", documentList);
+
+        response.put("request", request);
+
+        response.put("requesttime", "{{requesttime}}");
+        response.put("version", "{{version}}");
+
+        return response;
     }
 
 //    public static void main(String[] args) {
