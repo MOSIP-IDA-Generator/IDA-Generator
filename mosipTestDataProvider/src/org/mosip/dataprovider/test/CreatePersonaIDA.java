@@ -7,6 +7,7 @@
 package org.mosip.dataprovider.test;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Hashtable;
@@ -33,6 +34,7 @@ import org.mosip.dataprovider.util.CommonUtil;
 import org.mosip.dataprovider.util.DataCallback;
 import org.mosip.dataprovider.util.RestClient;
 import org.mosip.dataprovider.util.Translator;
+import org.mosip.dataprovider.BiometricDataProvider;
 
 import org.mvel2.MVEL;
 
@@ -68,7 +70,7 @@ public class CreatePersonaIDA {
         return null;
     }
 
-    public static JSONObject createIdentityIDA(String residentFilePath, DataCallback cb) throws IOException {
+    public static JSONObject createIdentityIDA(String residentFilePath, DataCallback cb) throws Exception {
         // Read the ResidentModel from the Persona file path which is given to the function
         ResidentModel resident = ResidentModel.readPersona(residentFilePath);
 
@@ -97,8 +99,6 @@ public class CreatePersonaIDA {
         List<String> missingAttributes = resident.getMissAttributes();
 
         for (MosipIDSchema schemaItem : schemaList) {
-//            System.out.println(schemaItem.getId());
-
             // Add log statement for current schemaItem
             if (cb != null)
                 cb.logDebug(schemaItem.toJSONString());
@@ -136,11 +136,6 @@ public class CreatePersonaIDA {
             // Skip schemaItem if it has no Type attached to it
             if (schemaItem.getType() == null)
                 continue;
-
-            // Almost all Dynamic Fields will be handled by the processDynamicFields and added to the
-            // identity JSON appropriately, so we can skip them over here
-//            if (PacketTemplateProvider.processDynamicFields(schemaItem, identity, resident))
-//                continue;
 
             // Adding residentStatus to the identity JSON
             if (schemaItem.getFieldType().equals("dynamic") && schemaItem.getId().toLowerCase().contains("residen")) {
@@ -200,8 +195,8 @@ public class CreatePersonaIDA {
             // So this else-if block adds these parameters to identity JSON
             else if (
                 schemaItem.getId().toLowerCase().equals("firstname") ||
-                    schemaItem.getId().toLowerCase().equals("lastname") ||
-                    schemaItem.getId().toLowerCase().equals("middlename")
+                schemaItem.getId().toLowerCase().equals("lastname") ||
+                schemaItem.getId().toLowerCase().equals("middlename")
             ) {
                 String name = "";
                 String name_sec = "";
@@ -240,8 +235,8 @@ public class CreatePersonaIDA {
             // Adding dateOfBirth or dob or birthdate to identity JSON
             else if (
                 schemaItem.getId().toLowerCase().equals("dateofbirth") ||
-                    schemaItem.getId().toLowerCase().equals("dob") ||
-                    schemaItem.getId().toLowerCase().equals("birthdate")
+                schemaItem.getId().toLowerCase().equals("dob") ||
+                schemaItem.getId().toLowerCase().equals("birthdate")
             ) {
                 String strDate = resident.getDob();
                 CreatePersona.constructNode(
@@ -391,8 +386,23 @@ public class CreatePersonaIDA {
             UIN = resident.getUIN();
         identity.put("UIN", UIN);
 
+        // Adding biometrics to identity JSON
+        // Literally converting the BiometricDataModel to string and placing it as it is
+        // under the individualBiometrics field in identity JSON
         BiometricDataModel biometric = resident.getBiometric();
-//        System.out.println(biometric.toString());
+        List<String> bioFilter = Arrays.asList(
+          "Face", "leftEye", "rightEye",
+          "leftThumb", "leftIndex", "leftMiddle", "leftRing", "leftLittle",
+          "rightThumb", "rightIndex", "rightMiddle", "rightRing", "rightLittle"
+        );
+
+        BiometricDataProvider.toCBEFF(bioFilter, biometric, resident.getId() + "_biometrics.xml");
+        JSONObject biometricsJSON = new JSONObject();
+        biometricsJSON.put("format", "cbeff");
+        // Pasting value of serialVersionUID parameter of biometricDataModel, i.e. 1L for "version" key as well
+        biometricsJSON.put("version", 1L);
+        biometricsJSON.put("value", resident.getId() + "_biometrics.xml");
+        identity.put("individualBiometrics", biometricsJSON);
 
         // Adding the introducer parameters to identity JSON
         // These are only valid if resident has a guardian, i.e. resident is a minor

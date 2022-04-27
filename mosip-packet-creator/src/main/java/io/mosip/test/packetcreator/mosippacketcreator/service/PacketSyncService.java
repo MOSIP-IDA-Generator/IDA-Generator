@@ -263,7 +263,7 @@ public class PacketSyncService {
     			//"{\"status\":\"SUCCESS\"}";
     }
 
-	public String generateIdentityData(String residentFilePath, String contextKey) throws IOException {
+	public String generateIdentityData(String residentFilePath, String contextKey) throws Exception {
 		loadServerContextProperties(contextKey);
 		VariableManager.setVariableValue("process", "NEW");
 
