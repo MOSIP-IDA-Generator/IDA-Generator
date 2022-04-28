@@ -103,7 +103,7 @@ public class PersonaController {
 	    	} catch (Exception ex){
 	             logger.error("generateResidentData", ex);
 	    	}
-	    	return "{Failed}";
+	    	return "{ Failed}";
 	}
 
 	@ApiOperation(value = "Create test persona identity as per the given specification", response = String.class)

@@ -387,8 +387,10 @@ public class CreatePersonaIDA {
         identity.put("UIN", UIN);
 
         // Adding biometrics to identity JSON
-        // Literally converting the BiometricDataModel to string and placing it as it is
-        // under the individualBiometrics field in identity JSON
+
+        // First convert the BiometricDataModel to an XML file with the help of the toCBEFF method
+        // This method requires bioFilter list which contains the biometric elements which need to be extracted
+        // We need all available elements, so we've specified all of them in the below list
         BiometricDataModel biometric = resident.getBiometric();
         List<String> bioFilter = Arrays.asList(
           "Face", "leftEye", "rightEye",
@@ -396,11 +398,16 @@ public class CreatePersonaIDA {
           "rightThumb", "rightIndex", "rightMiddle", "rightRing", "rightLittle"
         );
 
+        // The XML file will be saved as resident.id + "_biometrics.xml"
         BiometricDataProvider.toCBEFF(bioFilter, biometric, resident.getId() + "_biometrics.xml");
         JSONObject biometricsJSON = new JSONObject();
         biometricsJSON.put("format", "cbeff");
-        // Pasting value of serialVersionUID parameter of biometricDataModel, i.e. 1L for "version" key as well
+
+        // Pasting value of serialVersionUID parameter of biometricDataModel, i.e. 1L for "version" key
         biometricsJSON.put("version", 1L);
+
+        // Note that we're only placing the file name of the biometrics XML file in here
+        // This should probably be replaced by something more sensible later
         biometricsJSON.put("value", resident.getId() + "_biometrics.xml");
         identity.put("individualBiometrics", biometricsJSON);
 
